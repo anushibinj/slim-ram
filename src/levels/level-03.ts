@@ -3,6 +3,7 @@ import type { Level } from "./types";
 
 const client = createNodeSpec("client", "client");
 const appServer = createNodeSpec("app_server", "app_server");
+const database = createNodeSpec("database", "database", { capacityRps: 1000 });
 
 export const level03: Level = {
   id: "level-03",
@@ -22,8 +23,11 @@ export const level03: Level = {
     "Place a CDN between the client and the app server. It absorbs 100% of static traffic, leaving only the small read/write share to reach the app server.",
   ],
   startingGraph: {
-    nodes: [client, appServer],
-    edges: [{ id: "e-client-app", source: client.id, target: appServer.id }],
+    nodes: [client, appServer, database],
+    edges: [
+      { id: "e-client-app", source: client.id, target: appServer.id },
+      { id: "e-app-db", source: appServer.id, target: database.id },
+    ],
   },
   trafficProfile: { totalRps: 500, mix: { static: 0.7, read: 0.25, write: 0.05 } },
   allowedNodeTypes: ["cdn"],

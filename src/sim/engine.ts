@@ -441,6 +441,18 @@ export function simulateGraph(graph: SimGraph, profile: TrafficProfile): Simulat
         edgeMetrics[e.id] = edgeMetricsFromFlow(e.id, flow);
         incoming.set(e.target, mergeFlow(incoming.get(e.target)!, flow));
       }
+    } else {
+      // This node still has traffic it needs to forward on (it doesn't
+      // absorb/terminate these classes itself) but has no outbound edge to
+      // send it down — a disconnected or incomplete graph. That traffic
+      // never actually gets served, so it counts as an error rather than
+      // silently vanishing (which would otherwise let an empty or
+      // disconnected graph "win" on zero latency and zero errors).
+      errored = addClassRecords(errored, {
+        static: result.forward.static.rps,
+        read: result.forward.read.rps,
+        write: result.forward.write.rps,
+      });
     }
   }
 

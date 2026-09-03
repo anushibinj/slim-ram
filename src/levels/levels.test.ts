@@ -55,6 +55,26 @@ describe("levels registry", () => {
       expect(new Set(level.hints).size).toBe(level.hints.length);
     }
   });
+
+  it("cannot be won by deleting every node — traffic that reaches nothing must not read as a clean pass", () => {
+    for (const level of LEVELS) {
+      const emptyGraph: SimGraph = { nodes: [createNodeSpec("client", "client")], edges: [] };
+      expect(wins(level, emptyGraph)).toBe(false);
+    }
+  });
+
+  it("cannot be won by deleting the terminal node and leaving the rest dangling", () => {
+    for (const level of LEVELS) {
+      const withoutDatabase: SimGraph = {
+        nodes: level.startingGraph.nodes.filter((n) => n.type !== "database"),
+        edges: level.startingGraph.edges.filter((e) => {
+          const target = level.startingGraph.nodes.find((n) => n.id === e.target);
+          return target?.type !== "database";
+        }),
+      };
+      expect(wins(level, withoutDatabase)).toBe(false);
+    }
+  });
 });
 
 describe("level-01 — the database is on fire", () => {

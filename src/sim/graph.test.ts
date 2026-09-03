@@ -60,6 +60,43 @@ describe("simulateGraph — linear chain traversal", () => {
     expect(totalTerminal).toBeCloseTo(200);
   });
 
+  it("counts traffic that reaches a dead end as errored instead of vanishing", () => {
+    // client -> app_server, with nowhere for the app server to forward
+    // read/write on to. A disconnected or incomplete graph must not report
+    // clean zero-latency, zero-error traffic just because nothing was
+    // there to measure it.
+    const client = createNodeSpec("client", "client");
+    const appServer = createNodeSpec("app", "app_server", { capacityRps: 1000 });
+    const graph: SimGraph = {
+      nodes: [client, appServer],
+      edges: [{ id: "e0", source: "client", target: "app" }],
+    };
+    const profile: TrafficProfile = { totalRps: 100, mix: { static: 0.1, read: 0.7, write: 0.2 } };
+
+    const { terminal, errored } = simulateGraph(graph, profile);
+
+    // Static is absorbed by the app server itself, so it still completes.
+    expect(terminal.static.rps).toBeCloseTo(10);
+    // Read/write have nowhere to go — they must be counted as errors, not silently dropped.
+    expect(errored.read).toBeCloseTo(70);
+    expect(errored.write).toBeCloseTo(20);
+    expect(terminal.read.rps).toBe(0);
+    expect(terminal.write.rps).toBe(0);
+  });
+
+  it("reports 100% error rather than a trivial win when every downstream node is deleted", () => {
+    const client = createNodeSpec("client", "client");
+    const graph: SimGraph = { nodes: [client], edges: [] };
+    const profile: TrafficProfile = { totalRps: 400, mix: { static: 0.1, read: 0.85, write: 0.05 } };
+
+    const { terminal, errored } = simulateGraph(graph, profile);
+
+    const totalTerminal = terminal.static.rps + terminal.read.rps + terminal.write.rps;
+    const totalErrored = errored.static + errored.read + errored.write;
+    expect(totalTerminal).toBe(0);
+    expect(totalErrored).toBeCloseTo(400);
+  });
+
   it("throws on a cyclic graph", () => {
     const a = createNodeSpec("a", "app_server");
     const b = createNodeSpec("b", "database");
