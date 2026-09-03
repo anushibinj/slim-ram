@@ -70,6 +70,35 @@ describe("gameStore", () => {
     expect(useGameStore.getState().completedLevelIds).toContain("level-01");
   });
 
+  it("refreshes hud on the exact winning tick even if the throttle window hasn't elapsed", () => {
+    const store = useGameStore.getState();
+    store.addNode(createNodeSpec("fix-cache", "cache"));
+    store.removeEdge("e-app-db");
+    store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
+    store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
+
+    useGameStore.getState().dismissBriefing(T0);
+    useGameStore.getState().stepSimulation(T0 + 4100);
+
+    // Drive right up to (but not past) the win threshold with a hud sample
+    // freshly taken.
+    useGameStore.getState().stepSimulation(T0 + 7050);
+    expect(useGameStore.getState().phase).toBe("editing");
+    const hudBefore = useGameStore.getState().hud;
+
+    // Improve the cache's hit ratio right before the winning tick — still
+    // holds the win condition, but p99 should now read noticeably lower.
+    // If hud only refreshed on the throttled cadence, this tick (50ms
+    // later, inside the 250ms window) would report the stale pre-tweak
+    // value instead.
+    store.updateNodeConfig("fix-cache", { hitRatio: 0.99 });
+    useGameStore.getState().stepSimulation(T0 + 7100);
+
+    expect(useGameStore.getState().phase).toBe("won");
+    const hudAfter = useGameStore.getState().hud;
+    expect(hudAfter.p99LatencyMs).toBeLessThan(hudBefore.p99LatencyMs);
+  });
+
   it("resets winHoldStartMs if the condition stops holding", () => {
     useGameStore.getState().dismissBriefing(T0);
     useGameStore.getState().stepSimulation(T0 + 4100); // editing, but still broken — condition never holds

@@ -147,18 +147,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
 
     let winHoldStartMs = state.winHoldStartMs;
+    let justWon = false;
     if (phase === "editing") {
       const holds = evaluateWinCondition(state.level, simState);
       if (holds) {
         if (winHoldStartMs === null) winHoldStartMs = nowMs;
         if (nowMs - winHoldStartMs >= WIN_HOLD_MS) {
           phase = "won";
-          const completedLevelIds = state.completedLevelIds.includes(state.level.id)
-            ? state.completedLevelIds
-            : [...state.completedLevelIds, state.level.id];
-          saveProgress({ completedLevelIds, currentLevelId: state.level.id });
-          set({ simState, phase, winHoldStartMs, completedLevelIds });
-          return;
+          justWon = true;
         }
       } else {
         winHoldStartMs = null;
@@ -166,22 +162,35 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
 
     const lastSample = state.p99History[state.p99History.length - 1];
-    const shouldSampleHud = !lastSample || nowMs - lastSample.t >= HUD_THROTTLE_MS;
+    // Always refresh hud on the winning tick itself, regardless of
+    // throttling, so the win modal never shows a stale snapshot.
+    const shouldSampleHud = justWon || !lastSample || nowMs - lastSample.t >= HUD_THROTTLE_MS;
 
-    if (shouldSampleHud) {
-      const hud: HudSnapshot = {
-        p99LatencyMs: simState.global.p99LatencyMs,
-        meanLatencyMs: simState.global.meanLatencyMs,
-        errorRate: simState.global.errorRate,
-        monthlyCost: simState.global.monthlyCost,
-      };
-      const p99History = [...state.p99History, { t: nowMs, p99: simState.global.p99LatencyMs }].filter(
-        (s) => nowMs - s.t <= P99_HISTORY_WINDOW_MS,
-      );
-      set({ simState, phase, winHoldStartMs, hud, p99History });
-    } else {
+    if (!shouldSampleHud) {
       set({ simState, phase, winHoldStartMs });
+      return;
     }
+
+    const hud: HudSnapshot = {
+      p99LatencyMs: simState.global.p99LatencyMs,
+      meanLatencyMs: simState.global.meanLatencyMs,
+      errorRate: simState.global.errorRate,
+      monthlyCost: simState.global.monthlyCost,
+    };
+    const p99History = [...state.p99History, { t: nowMs, p99: simState.global.p99LatencyMs }].filter(
+      (s) => nowMs - s.t <= P99_HISTORY_WINDOW_MS,
+    );
+
+    if (justWon) {
+      const completedLevelIds = state.completedLevelIds.includes(state.level.id)
+        ? state.completedLevelIds
+        : [...state.completedLevelIds, state.level.id];
+      saveProgress({ completedLevelIds, currentLevelId: state.level.id });
+      set({ simState, phase, winHoldStartMs, hud, p99History, completedLevelIds });
+      return;
+    }
+
+    set({ simState, phase, winHoldStartMs, hud, p99History });
   },
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
