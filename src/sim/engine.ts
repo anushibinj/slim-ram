@@ -1,5 +1,6 @@
 import type {
   ClassRecord,
+  EdgeMetrics,
   EdgeSpec,
   NodeMetrics,
   NodeSpec,
@@ -386,8 +387,14 @@ function topologicalOrder(graph: SimGraph): { order: string[]; outEdges: Map<str
 
 export interface SimulationResult {
   nodeMetrics: Record<string, NodeMetrics>;
+  edgeMetrics: Record<string, EdgeMetrics>;
   terminal: FlowByClass;
   errored: ClassRecord;
+}
+
+function edgeMetricsFromFlow(edgeId: string, flow: FlowByClass): EdgeMetrics {
+  const byClass: ClassRecord = { static: flow.static.rps, read: flow.read.rps, write: flow.write.rps };
+  return { edgeId, rps: byClass.static + byClass.read + byClass.write, byClass };
 }
 
 /**
@@ -405,6 +412,7 @@ export function simulateGraph(graph: SimGraph, profile: TrafficProfile): Simulat
   for (const n of graph.nodes) incoming.set(n.id, zeroFlow());
 
   const nodeMetrics: Record<string, NodeMetrics> = {};
+  const edgeMetrics: Record<string, EdgeMetrics> = {};
   let terminal = zeroFlow();
   let errored = zeroClassRecord();
 
@@ -429,10 +437,12 @@ export function simulateGraph(graph: SimGraph, profile: TrafficProfile): Simulat
     if (targets.length > 0) {
       const perEdgeFlow = routeForward(result.forward, targets, nodeById, node.type === "load_balancer");
       for (const e of targets) {
-        incoming.set(e.target, mergeFlow(incoming.get(e.target)!, perEdgeFlow.get(e.id)!));
+        const flow = perEdgeFlow.get(e.id)!;
+        edgeMetrics[e.id] = edgeMetricsFromFlow(e.id, flow);
+        incoming.set(e.target, mergeFlow(incoming.get(e.target)!, flow));
       }
     }
   }
 
-  return { nodeMetrics, terminal, errored };
+  return { nodeMetrics, edgeMetrics, terminal, errored };
 }

@@ -56,6 +56,12 @@ export interface NodeMetrics {
   errorRate: number;
 }
 
+export interface EdgeMetrics {
+  edgeId: string;
+  rps: number;
+  byClass: ClassRecord;
+}
+
 export interface GlobalMetrics {
   latencyByClass: ClassRecord;
   meanLatencyMs: number;
@@ -66,6 +72,7 @@ export interface GlobalMetrics {
 
 export interface SimState {
   nodes: Record<string, NodeMetrics>;
+  edges: Record<string, EdgeMetrics>;
   global: GlobalMetrics;
   dt: number;
 }

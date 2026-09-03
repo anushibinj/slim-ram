@@ -18,7 +18,7 @@ export type { NodeTypeDefaults } from "./nodeSpecs";
  * move into a Web Worker later without changing its signature.
  */
 export function tick(graph: SimGraph, profile: TrafficProfile, dt: number): SimState {
-  const { nodeMetrics, terminal, errored } = simulateGraph(graph, profile);
+  const { nodeMetrics, edgeMetrics, terminal, errored } = simulateGraph(graph, profile);
   const global = computeGlobalMetrics(graph, terminal, errored, profile);
-  return { nodes: nodeMetrics, global, dt };
+  return { nodes: nodeMetrics, edges: edgeMetrics, global, dt };
 }
