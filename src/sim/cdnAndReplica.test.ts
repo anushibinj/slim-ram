@@ -76,4 +76,31 @@ describe("read_replica node — write rejection", () => {
     expect(nodeMetrics.replica.incomingRps).toBeCloseTo(0);
     expect(nodeMetrics.replica.errorRate).toBeCloseTo(1);
   });
+
+  it("wired alongside a database, takes all reads while writes route to the database untouched", () => {
+    // A read_replica structurally rejects write, so it counts as
+    // "specialized" — a class prefers a specialized edge over a generic
+    // one, which is what makes this wiring behave like a real read/write
+    // split instead of a blind 50/50 fan-out across both edges.
+    const client = createNodeSpec("client", "client");
+    const app = createNodeSpec("app", "app_server", { capacityRps: 1000 });
+    const replica = createNodeSpec("replica", "read_replica", { capacityRps: 1000 });
+    const db = createNodeSpec("db", "database", { capacityRps: 1000 });
+    const graph: SimGraph = {
+      nodes: [client, app, replica, db],
+      edges: [
+        { id: "e0", source: "client", target: "app" },
+        { id: "e1", source: "app", target: "replica" },
+        { id: "e2", source: "app", target: "db" },
+      ],
+    };
+    const profile: TrafficProfile = { totalRps: 100, mix: { static: 0, read: 0.3, write: 0.7 } };
+
+    const { nodeMetrics, errored } = simulateGraph(graph, profile);
+
+    expect(nodeMetrics.replica.incomingRps).toBeCloseTo(30);
+    expect(nodeMetrics.db.incomingRps).toBeCloseTo(70);
+    expect(errored.read).toBeCloseTo(0);
+    expect(errored.write).toBeCloseTo(0);
+  });
 });

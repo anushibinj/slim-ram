@@ -277,6 +277,64 @@ function processCacheNode(node: NodeSpec, incoming: FlowByClass): ProcessResult 
   };
 }
 
+function classIsRejectedBy(type: NodeType, c: TrafficClass): boolean {
+  return NODE_BEHAVIOR[type]?.[c]?.kind === "reject";
+}
+
+function isSpecialized(type: NodeType): boolean {
+  return TRAFFIC_CLASSES.some((c) => classIsRejectedBy(type, c));
+}
+
+/**
+ * Fans a node's forwarded flow out across its outbound edges. load_balancer
+ * always splits every class blindly and evenly, per its spec. Every other
+ * node routes per class: a class first tries edges leading to a
+ * "specialized" node — one that structurally rejects some other class, e.g.
+ * a read_replica rejects write — and only falls back to generic edges when
+ * no specialized edge accepts it. This is what lets a read_replica wired
+ * alongside a database actually take reads off the database instead of a
+ * blind split sending half of every class down each edge (which would just
+ * dump write traffic on the replica to be rejected). If literally no edge
+ * accepts a class, it's sent down every edge anyway so whichever node(s)
+ * receive it surface the rejection in their own metrics rather than the
+ * error vanishing silently at the routing step.
+ */
+function routeForward(
+  forward: FlowByClass,
+  targets: EdgeSpec[],
+  nodeById: Map<string, NodeSpec>,
+  isLoadBalancer: boolean,
+): Map<string, FlowByClass> {
+  const perEdgeFlow = new Map<string, FlowByClass>();
+  for (const e of targets) perEdgeFlow.set(e.id, zeroFlow());
+
+  if (isLoadBalancer) {
+    const split = splitFlow(forward, targets.length);
+    for (const e of targets) perEdgeFlow.set(e.id, split);
+    return perEdgeFlow;
+  }
+
+  for (const c of TRAFFIC_CLASSES) {
+    const classFlow = forward[c];
+    if (classFlow.rps <= 0) continue;
+
+    const accepting = targets.filter((e) => {
+      const target = nodeById.get(e.target);
+      return target && !classIsRejectedBy(target.type, c);
+    });
+    const specialized = accepting.filter((e) => isSpecialized(nodeById.get(e.target)!.type));
+    const chosen = specialized.length > 0 ? specialized : accepting.length > 0 ? accepting : targets;
+
+    const share: ClassFlow = { rps: classFlow.rps / chosen.length, avgLatencyMs: classFlow.avgLatencyMs };
+    for (const e of chosen) {
+      const edgeFlow = perEdgeFlow.get(e.id)!;
+      edgeFlow[c] = mergeClassFlow(edgeFlow[c], share);
+    }
+  }
+
+  return perEdgeFlow;
+}
+
 function topologicalOrder(graph: SimGraph): { order: string[]; outEdges: Map<string, EdgeSpec[]> } {
   const outEdges = new Map<string, EdgeSpec[]>();
   const inDegree = new Map<string, number>();
@@ -355,9 +413,9 @@ export function simulateGraph(graph: SimGraph, profile: TrafficProfile): Simulat
 
     const targets = outEdges.get(id) ?? [];
     if (targets.length > 0) {
-      const split = splitFlow(result.forward, targets.length);
+      const perEdgeFlow = routeForward(result.forward, targets, nodeById, node.type === "load_balancer");
       for (const e of targets) {
-        incoming.set(e.target, mergeFlow(incoming.get(e.target)!, split));
+        incoming.set(e.target, mergeFlow(incoming.get(e.target)!, perEdgeFlow.get(e.id)!));
       }
     }
   }
