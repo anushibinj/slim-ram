@@ -1,5 +1,5 @@
 import { useGameStore } from "../../store/gameStore";
-import { NODE_LABELS } from "../canvas/nodes/SimNode";
+import { NODE_LABELS } from "../canvas/nodes/nodeLabels";
 
 export function Inspector() {
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);

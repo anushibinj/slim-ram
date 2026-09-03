@@ -218,7 +218,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
   removeNode: (nodeId) =>
     set((s) => {
-      const { [nodeId]: _removed, ...positions } = s.positions;
+      const positions = Object.fromEntries(Object.entries(s.positions).filter(([id]) => id !== nodeId));
       return {
         graph: {
           nodes: s.graph.nodes.filter((n) => n.id !== nodeId),

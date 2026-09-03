@@ -2,6 +2,7 @@ import { Handle, Position as HandlePosition } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
 import type { NodeType } from "../../../sim";
 import { useGameStore } from "../../../store/gameStore";
+import { NODE_LABELS } from "./nodeLabels";
 
 const ICONS: Record<NodeType, string> = {
   client: "🖥️",
@@ -11,16 +12,6 @@ const ICONS: Record<NodeType, string> = {
   load_balancer: "⚖️",
   cdn: "🌐",
   read_replica: "📚",
-};
-
-export const NODE_LABELS: Record<NodeType, string> = {
-  client: "Client",
-  app_server: "App Server",
-  database: "Database",
-  cache: "Cache",
-  load_balancer: "Load Balancer",
-  cdn: "CDN",
-  read_replica: "Read Replica",
 };
 
 function utilizationBarColor(u: number): string {

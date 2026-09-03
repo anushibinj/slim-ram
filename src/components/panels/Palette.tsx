@@ -1,7 +1,7 @@
 import { NODE_TYPE_DEFAULTS, createNodeSpec } from "../../sim";
 import { useGameStore } from "../../store/gameStore";
 import { DRAG_MIME_TYPE } from "../canvas/GraphCanvas";
-import { NODE_LABELS } from "../canvas/nodes/SimNode";
+import { NODE_LABELS } from "../canvas/nodes/nodeLabels";
 
 const ICONS: Record<string, string> = {
   client: "🖥️",

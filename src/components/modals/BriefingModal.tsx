@@ -1,6 +1,6 @@
 import { LEVELS } from "../../levels";
 import { useGameStore } from "../../store/gameStore";
-import { NODE_LABELS } from "../canvas/nodes/SimNode";
+import { NODE_LABELS } from "../canvas/nodes/nodeLabels";
 import { Modal } from "./Modal";
 
 export function BriefingModal() {
