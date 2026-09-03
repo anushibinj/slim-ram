@@ -110,4 +110,28 @@ describe("gameStore", () => {
     store.removeNode("new-cache");
     expect(useGameStore.getState().positions["new-cache"]).toBeUndefined();
   });
+
+  it("tap-to-connect: tap source, then tap target, creates an edge", () => {
+    const store = useGameStore.getState();
+    store.addNode(createNodeSpec("new-cache", "cache"));
+
+    store.beginConnect("app_server");
+    expect(useGameStore.getState().connectSourceId).toBe("app_server");
+
+    store.completeConnect("new-cache");
+    expect(useGameStore.getState().connectSourceId).toBeNull();
+    expect(useGameStore.getState().graph.edges).toContainEqual({
+      id: "app_server->new-cache",
+      source: "app_server",
+      target: "new-cache",
+    });
+  });
+
+  it("tap-to-connect: tapping the same node cancels instead of self-connecting", () => {
+    const store = useGameStore.getState();
+    store.beginConnect("app_server");
+    store.completeConnect("app_server");
+    expect(useGameStore.getState().connectSourceId).toBeNull();
+    expect(useGameStore.getState().graph.edges.some((e) => e.source === e.target)).toBe(false);
+  });
 });

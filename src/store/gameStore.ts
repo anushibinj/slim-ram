@@ -70,9 +70,22 @@ interface GameStoreState {
   winHoldStartMs: number | null;
   completedLevelIds: string[];
 
+  /** Node shown in the Inspector. */
+  selectedNodeId: string | null;
+  /**
+   * Tap-to-connect mode: the node a tap-to-connect gesture started from,
+   * pending a tap on a target node to complete the edge.
+   */
+  connectSourceId: string | null;
+
   loadLevel: (levelId: string, nowMs?: number) => void;
   dismissBriefing: (nowMs: number) => void;
   stepSimulation: (nowMs: number) => void;
+
+  selectNode: (nodeId: string | null) => void;
+  beginConnect: (nodeId: string) => void;
+  cancelConnect: () => void;
+  completeConnect: (targetId: string) => void;
 
   addNode: (node: NodeSpec, position?: Position) => void;
   removeNode: (nodeId: string) => void;
@@ -96,6 +109,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   introStartMs: null,
   winHoldStartMs: null,
   completedLevelIds: progress.completedLevelIds,
+  selectedNodeId: null,
+  connectSourceId: null,
 
   loadLevel: (levelId, nowMs) => {
     const level = getLevelById(levelId);
@@ -110,6 +125,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       phase: "briefing",
       introStartMs: nowMs ?? null,
       winHoldStartMs: null,
+      selectedNodeId: null,
+      connectSourceId: null,
     });
   },
 
@@ -167,6 +184,29 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
   },
 
+  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+
+  beginConnect: (nodeId) => set({ connectSourceId: nodeId }),
+
+  cancelConnect: () => set({ connectSourceId: null }),
+
+  completeConnect: (targetId) => {
+    const { connectSourceId, graph } = get();
+    if (!connectSourceId || connectSourceId === targetId) {
+      set({ connectSourceId: null });
+      return;
+    }
+    const id = `${connectSourceId}->${targetId}`;
+    if (graph.edges.some((e) => e.id === id)) {
+      set({ connectSourceId: null });
+      return;
+    }
+    set((s) => ({
+      graph: { nodes: s.graph.nodes, edges: [...s.graph.edges, { id, source: connectSourceId, target: targetId }] },
+      connectSourceId: null,
+    }));
+  },
+
   addNode: (node, position) =>
     set((s) => {
       const graph: SimGraph = { nodes: [...s.graph.nodes, node], edges: s.graph.edges };
@@ -185,6 +225,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           edges: s.graph.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
         },
         positions,
+        selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId,
+        connectSourceId: s.connectSourceId === nodeId ? null : s.connectSourceId,
       };
     }),
 
