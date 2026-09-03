@@ -36,6 +36,7 @@ export function SimNode({ id, data, selected }: NodeProps<SimFlowNode>) {
   const selectNode = useGameStore((s) => s.selectNode);
   const beginConnect = useGameStore((s) => s.beginConnect);
   const completeConnect = useGameStore((s) => s.completeConnect);
+  const cancelConnect = useGameStore((s) => s.cancelConnect);
 
   const isConnectSource = connectSourceId === id;
   const isConnectPending = connectSourceId !== null;
@@ -53,7 +54,9 @@ export function SimNode({ id, data, selected }: NodeProps<SimFlowNode>) {
 
   function handleConnectHandleTap(e: React.MouseEvent) {
     e.stopPropagation();
-    if (isConnectPending && !isConnectSource) {
+    if (isConnectSource) {
+      cancelConnect();
+    } else if (isConnectPending) {
       completeConnect(id);
     } else {
       beginConnect(id);
