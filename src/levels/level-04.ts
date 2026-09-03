@@ -12,6 +12,11 @@ export const level04: Level = {
     "This system is degraded and traffic is heavily static again — but this time there's a budget: " +
     "$150 a month, total. Throwing raw capacity at the problem will fix the symptom, but it won't fit the " +
     "budget. Find the cheap, high-leverage fix instead of the expensive brute-force one.",
+  explainer:
+    "Scaling out app servers works, but every extra instance costs money — enough of them to fix this blows " +
+    "straight through the cap. A single cdn costs a fraction as much and removes the actual source of the load " +
+    "instead of just adding capacity to absorb it. Cost is a constraint like any other; the cheapest fix that " +
+    "actually works beats the obvious one.",
   startingGraph: {
     nodes: [client, appServer, database],
     edges: [

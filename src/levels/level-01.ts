@@ -12,6 +12,10 @@ export const level01: Level = {
     "This system serves 400 requests per second: mostly reads, a few writes, a little static. " +
     "The database is drowning — every read that could have been served from memory is hammering disk instead. " +
     "Give it somewhere to absorb repeat reads before they ever reach the database.",
+  explainer:
+    "A cache with an 80% hit ratio means only 1 in 5 reads still reaches the database — and utilization isn't " +
+    "linear with load, so cutting that traffic doesn't just shave latency a little, it collapses it. That's the " +
+    "whole lesson: headroom under capacity is what actually governs latency, not the raw request count.",
   startingGraph: {
     nodes: [client, appServer, database],
     edges: [
