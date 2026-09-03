@@ -163,4 +163,19 @@ describe("gameStore", () => {
     expect(useGameStore.getState().connectSourceId).toBeNull();
     expect(useGameStore.getState().graph.edges.some((e) => e.source === e.target)).toBe(false);
   });
+
+  it("reveals hints one at a time, capped at the level's hint count, and resets on loadLevel", () => {
+    const store = useGameStore.getState();
+    const totalHints = useGameStore.getState().level.hints.length;
+    expect(useGameStore.getState().hintsRevealed).toBe(0);
+
+    store.revealNextHint();
+    expect(useGameStore.getState().hintsRevealed).toBe(1);
+
+    for (let i = 0; i < totalHints + 5; i++) store.revealNextHint();
+    expect(useGameStore.getState().hintsRevealed).toBe(totalHints);
+
+    useGameStore.getState().loadLevel("level-02");
+    expect(useGameStore.getState().hintsRevealed).toBe(0);
+  });
 });

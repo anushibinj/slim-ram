@@ -77,6 +77,8 @@ interface GameStoreState {
    * pending a tap on a target node to complete the edge.
    */
   connectSourceId: string | null;
+  /** How many of the current level's hints have been revealed, 0..hints.length. Resets on loadLevel. */
+  hintsRevealed: number;
 
   loadLevel: (levelId: string, nowMs?: number) => void;
   dismissBriefing: (nowMs: number) => void;
@@ -86,6 +88,7 @@ interface GameStoreState {
   beginConnect: (nodeId: string) => void;
   cancelConnect: () => void;
   completeConnect: (targetId: string) => void;
+  revealNextHint: () => void;
 
   addNode: (node: NodeSpec, position?: Position) => void;
   removeNode: (nodeId: string) => void;
@@ -111,6 +114,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   completedLevelIds: progress.completedLevelIds,
   selectedNodeId: null,
   connectSourceId: null,
+  hintsRevealed: 0,
 
   loadLevel: (levelId, nowMs) => {
     const level = getLevelById(levelId);
@@ -127,6 +131,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       winHoldStartMs: null,
       selectedNodeId: null,
       connectSourceId: null,
+      hintsRevealed: 0,
     });
   },
 
@@ -215,6 +220,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       connectSourceId: null,
     }));
   },
+
+  revealNextHint: () =>
+    set((s) => ({ hintsRevealed: Math.min(s.level.hints.length, s.hintsRevealed + 1) })),
 
   addNode: (node, position) =>
     set((s) => {
