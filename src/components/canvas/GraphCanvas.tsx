@@ -13,12 +13,14 @@ import "@xyflow/react/dist/style.css";
 import { useMemo } from "react";
 import { createNodeSpec, type NodeType } from "../../sim";
 import { useGameStore } from "../../store/gameStore";
+import { SimEdge } from "./edges/SimEdge";
 import { ParticleLayer } from "./ParticleLayer";
 import { SimNode, type SimFlowNode } from "./nodes/SimNode";
 
 export const DRAG_MIME_TYPE = "application/slim-ram-node-type";
 
 const nodeTypes = { simNode: SimNode };
+const edgeTypes = { simEdge: SimEdge };
 
 function GraphCanvasInner() {
   const graph = useGameStore((s) => s.graph);
@@ -45,7 +47,7 @@ function GraphCanvasInner() {
   );
 
   const edges: Edge[] = useMemo(
-    () => graph.edges.map((e) => ({ id: e.id, source: e.source, target: e.target, animated: true })),
+    () => graph.edges.map((e) => ({ id: e.id, source: e.source, target: e.target, type: "simEdge", animated: true })),
     [graph.edges],
   );
 
@@ -97,6 +99,7 @@ function GraphCanvasInner() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
