@@ -210,6 +210,59 @@ function processGenericNode(node: NodeSpec, incoming: FlowByClass): ProcessResul
   };
 }
 
+const DEFAULT_CACHE_HIT_RATIO = 0.8;
+
+/**
+ * Cache is the one node type whose class routing doesn't fit the generic
+ * forward/absorb table: a hit ratio splits read traffic into an absorbed
+ * (hit) share and a forwarded (miss) share, while static always passes
+ * through untouched and write always forwards in full — a cache must never
+ * absorb static or write, only reads it actually has cached.
+ */
+function processCacheNode(node: NodeSpec, incoming: FlowByClass): ProcessResult {
+  const hitRatio = Math.min(1, Math.max(0, node.config.hitRatio ?? DEFAULT_CACHE_HIT_RATIO));
+  const consumedRps = incoming.read.rps + incoming.write.rps;
+
+  const { utilization, latencyMs, errorRate } = computeLatencyAndError(consumedRps, node.capacityRps, node.baseLatencyMs);
+  const survivalFactor = 1 - errorRate;
+
+  const forward = zeroFlow();
+  const terminal = zeroFlow();
+  const errored = zeroClassRecord();
+
+  forward.static = incoming.static;
+
+  const survivingRead = incoming.read.rps * survivalFactor;
+  errored.read = incoming.read.rps - survivingRead;
+  const hitRps = survivingRead * hitRatio;
+  const missRps = survivingRead - hitRps;
+  const readLatency = incoming.read.avgLatencyMs + latencyMs;
+  if (hitRps > 0) terminal.read = { rps: hitRps, avgLatencyMs: readLatency };
+  if (missRps > 0) forward.read = { rps: missRps, avgLatencyMs: readLatency };
+
+  const survivingWrite = incoming.write.rps * survivalFactor;
+  errored.write = incoming.write.rps - survivingWrite;
+  if (survivingWrite > 0) {
+    forward.write = { rps: survivingWrite, avgLatencyMs: incoming.write.avgLatencyMs + latencyMs };
+  }
+
+  const totalIncomingRps = incoming.static.rps + incoming.read.rps + incoming.write.rps;
+  const totalErroredRps = errored.read + errored.write;
+
+  return {
+    metrics: {
+      nodeId: node.id,
+      incomingRps: consumedRps,
+      utilization,
+      latencyMs,
+      errorRate: totalIncomingRps > 0 ? totalErroredRps / totalIncomingRps : 0,
+    },
+    forward,
+    terminal,
+    errored,
+  };
+}
+
 function topologicalOrder(graph: SimGraph): { order: string[]; outEdges: Map<string, EdgeSpec[]> } {
   const outEdges = new Map<string, EdgeSpec[]>();
   const inDegree = new Map<string, number>();
@@ -273,8 +326,14 @@ export function simulateGraph(graph: SimGraph, profile: TrafficProfile): Simulat
     const node = nodeById.get(id);
     if (!node) continue;
 
-    const result =
-      node.type === "client" ? processClientNode(node, profile) : processGenericNode(node, incoming.get(id)!);
+    let result: ProcessResult;
+    if (node.type === "client") {
+      result = processClientNode(node, profile);
+    } else if (node.type === "cache") {
+      result = processCacheNode(node, incoming.get(id)!);
+    } else {
+      result = processGenericNode(node, incoming.get(id)!);
+    }
 
     nodeMetrics[id] = result.metrics;
     terminal = mergeFlow(terminal, result.terminal);
