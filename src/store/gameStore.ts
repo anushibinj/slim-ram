@@ -209,10 +209,16 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     );
 
     if (justWon) {
-      const completedLevelIds = state.completedLevelIds.includes(state.level.id)
+      // The win modal is a one-time "you solved this" moment per level —
+      // once it's already in completedLevelIds, breaking the fix and
+      // re-satisfying the condition while tinkering must not pop it again.
+      const alreadyCompleted = state.completedLevelIds.includes(state.level.id);
+      const completedLevelIds = alreadyCompleted
         ? state.completedLevelIds
         : [...state.completedLevelIds, state.level.id];
-      saveProgress({ completedLevelIds, currentLevelId: state.level.id });
+      if (!alreadyCompleted) {
+        saveProgress({ completedLevelIds, currentLevelId: state.level.id });
+      }
       set({
         simState,
         phase,
@@ -221,7 +227,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         hud,
         p99History,
         completedLevelIds,
-        winModalVisible: true,
+        winModalVisible: !alreadyCompleted,
       });
       return;
     }

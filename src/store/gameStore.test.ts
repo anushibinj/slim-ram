@@ -6,6 +6,11 @@ const T0 = 1_000_000;
 
 describe("gameStore", () => {
   beforeEach(() => {
+    // completedLevelIds is meant to persist across loadLevel calls in real
+    // play (it's cross-level progress) but that also means it leaks
+    // between tests sharing this module-level store — reset it explicitly
+    // so each test starts from a clean "nothing solved yet" baseline.
+    useGameStore.setState({ completedLevelIds: [] });
     useGameStore.getState().loadLevel("level-01", T0);
   });
 
@@ -102,6 +107,46 @@ describe("gameStore", () => {
     useGameStore.getState().stepSimulation(t);
     expect(useGameStore.getState().phase).toBe("editing");
     expect(useGameStore.getState().completedLevelIds).toContain("level-01"); // still recorded as solved
+  });
+
+  it("does not re-show the win modal after breaking and re-fixing an already-solved level", () => {
+    const store = useGameStore.getState();
+    function wireFix() {
+      store.addNode(createNodeSpec("fix-cache", "cache"));
+      store.removeEdge("e-app-db");
+      store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
+      store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
+    }
+
+    wireFix();
+    useGameStore.getState().dismissBriefing(T0);
+    let t = T0 + 4100;
+    useGameStore.getState().stepSimulation(t);
+    for (let i = 0; i < 40; i++) {
+      t += 100;
+      useGameStore.getState().stepSimulation(t);
+      if (useGameStore.getState().winModalVisible) break;
+    }
+    expect(useGameStore.getState().winModalVisible).toBe(true);
+    store.dismissWinModal();
+
+    // Break the fix — condition stops holding.
+    store.removeNode("fix-cache");
+    t += 100;
+    useGameStore.getState().stepSimulation(t);
+    expect(useGameStore.getState().winModalVisible).toBe(false);
+
+    // Re-fix it exactly the same way and hold it for 3s again.
+    wireFix();
+    for (let i = 0; i < 40; i++) {
+      t += 100;
+      useGameStore.getState().stepSimulation(t);
+    }
+
+    // The level was already solved — re-satisfying the condition must not
+    // pop the "you win" modal a second time.
+    expect(useGameStore.getState().winModalVisible).toBe(false);
+    expect(useGameStore.getState().completedLevelIds.filter((id) => id === "level-01")).toEqual(["level-01"]);
   });
 
   it("refreshes hud on the exact winning tick even if the throttle window hasn't elapsed", () => {
