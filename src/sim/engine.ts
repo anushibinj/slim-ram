@@ -128,6 +128,15 @@ const NODE_BEHAVIOR: Partial<Record<NodeType, NodeBehavior>> = {
     read: { kind: "forward" },
     write: { kind: "forward" },
   },
+  cdn: {
+    static: { kind: "absorb" },
+    read: { kind: "passthrough" },
+    write: { kind: "passthrough" },
+  },
+  read_replica: {
+    read: { kind: "absorb" },
+    write: { kind: "reject" },
+  },
 };
 
 export interface ProcessResult {
