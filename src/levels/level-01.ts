@@ -16,6 +16,12 @@ export const level01: Level = {
     "A cache with an 80% hit ratio means only 1 in 5 reads still reaches the database — and utilization isn't " +
     "linear with load, so cutting that traffic doesn't just shave latency a little, it collapses it. That's the " +
     "whole lesson: headroom under capacity is what actually governs latency, not the raw request count.",
+  hints: [
+    "Look at the database's utilization bar — it's deep red. What's eating its capacity?",
+    "Most of this traffic is reads. Reads that hit the same data over and over don't need to go all the way to disk every single time.",
+    "Something that sits between the app server and the database, remembering recent reads, would take a lot of that load off.",
+    "Drag a Cache onto the canvas. Delete the direct app_server → database edge, then wire app_server → cache → database instead. The default 80% hit ratio is enough.",
+  ],
   startingGraph: {
     nodes: [client, appServer, database],
     edges: [

@@ -18,6 +18,12 @@ export const level05: Level = {
     "to a read_replica instead frees up the primary database's full capacity for writes alone, which is just " +
     "enough headroom to fit. The lesson: know your workload before you reach for a tool that only helps one " +
     "slice of it.",
+  hints: [
+    "Go ahead, try the cache — it's fixed everything so far. Watch the database's utilization bar closely after you wire it in.",
+    "This traffic is 80% writes. A cache only ever helps reads — writes always pass straight through to the database no matter what sits in front of it.",
+    "You need something that takes read traffic off the primary database entirely, freeing its full capacity for writes alone.",
+    "Add a Read Replica and wire app_server → read_replica alongside the existing app_server → database edge. Reads route to the replica, writes stay on the primary — just enough headroom for writes alone to fit.",
+  ],
   startingGraph: {
     nodes: [client, appServer, database],
     edges: [

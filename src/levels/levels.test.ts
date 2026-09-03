@@ -44,6 +44,17 @@ describe("levels registry", () => {
       for (const t of level.allowedNodeTypes) expect(known.has(t)).toBe(true);
     }
   });
+
+  it("every level has at least 3 non-empty hints, progressively revealed", () => {
+    for (const level of LEVELS) {
+      expect(level.hints.length).toBeGreaterThanOrEqual(3);
+      for (const hint of level.hints) {
+        expect(hint.trim().length).toBeGreaterThan(0);
+      }
+      // Hints must be distinct — no accidental duplicate/copy-paste entries.
+      expect(new Set(level.hints).size).toBe(level.hints.length);
+    }
+  });
 });
 
 describe("level-01 — the database is on fire", () => {

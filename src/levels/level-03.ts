@@ -15,6 +15,12 @@ export const level03: Level = {
     "A CDN absorbs static traffic entirely — it never even reaches the app server. That's not the same trick as " +
     "caching or scaling: the app server didn't get faster or bigger, most of its work simply stopped being its " +
     "problem. Knowing which traffic class you're looking at changes which fix even makes sense.",
+  hints: [
+    "The app server is overwhelmed again — but check the traffic mix this time, not just the total volume.",
+    "70% of this traffic is static files: images, JS, CSS. None of that needs application code running at all.",
+    "There's a component whose entire job is serving static assets close to the client, so they never reach your app server in the first place.",
+    "Place a CDN between the client and the app server. It absorbs 100% of static traffic, leaving only the small read/write share to reach the app server.",
+  ],
   startingGraph: {
     nodes: [client, appServer],
     edges: [{ id: "e-client-app", source: client.id, target: appServer.id }],

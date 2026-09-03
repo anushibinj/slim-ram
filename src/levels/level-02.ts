@@ -17,6 +17,12 @@ export const level02: Level = {
     "Caching fixed the database, but it did nothing for the app server — every request still has to pass " +
     "through it first. Spreading that load across several instances behind a load balancer is what brought its " +
     "utilization back under capacity. Fixing one bottleneck just moves the constraint to whatever's next in line.",
+  hints: [
+    "Check every node's utilization bar. The database's fix from last level is holding fine — but something else is now deep red.",
+    "Traffic grew from 400 to 900rps, but a single app server only has 200rps of capacity. It doesn't matter how good the cache is if requests never make it past the app server.",
+    "You need more application capacity — either several app server instances, or something that fans traffic out evenly across them.",
+    "Add a Load Balancer and a few more App Server instances behind it (or just raise the existing App Server's 'server count' in the Inspector to 5) so combined capacity clears 900rps.",
+  ],
   startingGraph: {
     nodes: [client, appServer, cache, database],
     edges: [
