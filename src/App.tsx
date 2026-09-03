@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GraphCanvas } from "./components/canvas/GraphCanvas";
 import { Hud } from "./components/hud/Hud";
 import { BriefingModal, HelpModal } from "./components/modals/BriefingModal";
+import { HintModal } from "./components/modals/HintModal";
 import { WinModal } from "./components/modals/WinModal";
 import { Inspector } from "./components/panels/Inspector";
 import { MetricsPanel } from "./components/panels/MetricsPanel";
@@ -15,6 +16,7 @@ function App() {
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => useGameStore.getState().stepSimulation(performance.now()), SIM_TICK_MS);
@@ -33,6 +35,15 @@ function App() {
         <div className="min-w-0 flex-1">
           <Hud />
         </div>
+        <button
+          type="button"
+          onClick={() => setHintOpen(true)}
+          className="mr-2 flex items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-base hover:bg-amber-100"
+          style={{ minHeight: 44, minWidth: 44 }}
+          aria-label="Show hints"
+        >
+          💡
+        </button>
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
@@ -114,6 +125,7 @@ function App() {
       {phase === "briefing" && <BriefingModal />}
       {phase === "won" && <WinModal />}
       {helpOpen && phase !== "briefing" && phase !== "won" && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {hintOpen && phase !== "briefing" && phase !== "won" && <HintModal onClose={() => setHintOpen(false)} />}
     </div>
   );
 }
