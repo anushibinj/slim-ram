@@ -123,6 +123,11 @@ const NODE_BEHAVIOR: Partial<Record<NodeType, NodeBehavior>> = {
     read: { kind: "absorb" },
     write: { kind: "absorb" },
   },
+  load_balancer: {
+    static: { kind: "forward" },
+    read: { kind: "forward" },
+    write: { kind: "forward" },
+  },
 };
 
 export interface ProcessResult {
