@@ -160,6 +160,20 @@ function processClientNode(node: NodeSpec, profile: TrafficProfile): ProcessResu
   };
 }
 
+/**
+ * app_server is the one node type horizontally scaled from its own
+ * Inspector panel (config.serverCount) rather than by wiring up extra
+ * node instances, so its effective capacity is the per-instance capacity
+ * times how many instances the config says stand behind it.
+ */
+function effectiveCapacity(node: NodeSpec): number {
+  if (node.type === "app_server") {
+    const serverCount = Math.max(1, node.config.serverCount ?? 1);
+    return node.capacityRps * serverCount;
+  }
+  return node.capacityRps;
+}
+
 function processGenericNode(node: NodeSpec, incoming: FlowByClass): ProcessResult {
   const behavior = NODE_BEHAVIOR[node.type] ?? {};
 
@@ -171,7 +185,7 @@ function processGenericNode(node: NodeSpec, incoming: FlowByClass): ProcessResul
     }
   }
 
-  const { utilization, latencyMs, errorRate } = computeLatencyAndError(consumedRps, node.capacityRps, node.baseLatencyMs);
+  const { utilization, latencyMs, errorRate } = computeLatencyAndError(consumedRps, effectiveCapacity(node), node.baseLatencyMs);
   const survivalFactor = 1 - errorRate;
 
   const forward = zeroFlow();

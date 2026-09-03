@@ -9,7 +9,7 @@ export interface NodeTypeDefaults {
 
 export const NODE_TYPE_DEFAULTS: Record<NodeType, NodeTypeDefaults> = {
   client: { capacityRps: Infinity, baseLatencyMs: 0, costPerMonth: 0, config: {} },
-  app_server: { capacityRps: 200, baseLatencyMs: 20, costPerMonth: 20, config: {} },
+  app_server: { capacityRps: 200, baseLatencyMs: 20, costPerMonth: 20, config: { serverCount: 1 } },
   database: { capacityRps: 150, baseLatencyMs: 15, costPerMonth: 80, config: {} },
   cache: { capacityRps: 5000, baseLatencyMs: 2, costPerMonth: 15, config: { hitRatio: 0.8 } },
   load_balancer: { capacityRps: 10000, baseLatencyMs: 2, costPerMonth: 25, config: {} },
