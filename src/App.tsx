@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { GraphCanvas } from "./components/canvas/GraphCanvas";
 import { Hud } from "./components/hud/Hud";
-import { BriefingModal } from "./components/modals/BriefingModal";
+import { BriefingModal, HelpModal } from "./components/modals/BriefingModal";
 import { WinModal } from "./components/modals/WinModal";
 import { Inspector } from "./components/panels/Inspector";
 import { MetricsPanel } from "./components/panels/MetricsPanel";
@@ -14,6 +14,7 @@ function App() {
   const phase = useGameStore((s) => s.phase);
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => useGameStore.getState().stepSimulation(performance.now()), SIM_TICK_MS);
@@ -28,8 +29,19 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
-        <Hud />
+      <header className="flex items-center border-b border-slate-200 bg-white">
+        <div className="min-w-0 flex-1">
+          <Hud />
+        </div>
+        <button
+          type="button"
+          onClick={() => setHelpOpen(true)}
+          className="mr-2 flex items-center justify-center rounded-full border border-slate-300 text-sm font-semibold text-slate-500 hover:bg-slate-100"
+          style={{ minHeight: 44, minWidth: 44 }}
+          aria-label="Show level instructions"
+        >
+          ?
+        </button>
       </header>
 
       {phase === "intro" && (
@@ -101,6 +113,7 @@ function App() {
 
       {phase === "briefing" && <BriefingModal />}
       {phase === "won" && <WinModal />}
+      {helpOpen && phase !== "briefing" && phase !== "won" && <HelpModal onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }
