@@ -11,6 +11,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useMemo } from "react";
 import { useGameStore } from "../../store/gameStore";
+import { ParticleLayer } from "./ParticleLayer";
 import { SimNode, type SimFlowNode } from "./nodes/SimNode";
 
 const nodeTypes = { simNode: SimNode };
@@ -68,23 +69,26 @@ function GraphCanvasInner() {
   }
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={handleEdgesChange}
-      onConnect={handleConnect}
-      nodesDraggable={editable}
-      nodesConnectable={editable}
-      elementsSelectable={editable}
-      edgesReconnectable={editable}
-      deleteKeyCode={editable ? ["Backspace", "Delete"] : []}
-      fitView
-    >
-      <Background />
-      <Controls showInteractive={false} />
-    </ReactFlow>
+    <div className="relative h-full w-full">
+      <ParticleLayer />
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
+        onConnect={handleConnect}
+        nodesDraggable={editable}
+        nodesConnectable={editable}
+        elementsSelectable={editable}
+        edgesReconnectable={editable}
+        deleteKeyCode={editable ? ["Backspace", "Delete"] : []}
+        fitView
+      >
+        <Background />
+        <Controls showInteractive={false} />
+      </ReactFlow>
+    </div>
   );
 }
 
