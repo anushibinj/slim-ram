@@ -3,6 +3,7 @@ import {
   Controls,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Connection,
   type Edge,
   type EdgeChange,
@@ -10,9 +11,12 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useMemo } from "react";
+import { createNodeSpec, type NodeType } from "../../sim";
 import { useGameStore } from "../../store/gameStore";
 import { ParticleLayer } from "./ParticleLayer";
 import { SimNode, type SimFlowNode } from "./nodes/SimNode";
+
+export const DRAG_MIME_TYPE = "application/slim-ram-node-type";
 
 const nodeTypes = { simNode: SimNode };
 
@@ -21,9 +25,11 @@ function GraphCanvasInner() {
   const positions = useGameStore((s) => s.positions);
   const phase = useGameStore((s) => s.phase);
   const addEdge = useGameStore((s) => s.addEdge);
+  const addNode = useGameStore((s) => s.addNode);
   const removeEdge = useGameStore((s) => s.removeEdge);
   const removeNode = useGameStore((s) => s.removeNode);
   const setNodePosition = useGameStore((s) => s.setNodePosition);
+  const { screenToFlowPosition } = useReactFlow();
 
   const editable = phase === "editing";
 
@@ -68,8 +74,24 @@ function GraphCanvasInner() {
     addEdge({ id, source: connection.source, target: connection.target });
   }
 
+  function handleDragOver(e: React.DragEvent) {
+    if (!editable) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    if (!editable) return;
+    const type = e.dataTransfer.getData(DRAG_MIME_TYPE) as NodeType;
+    if (!type) return;
+    e.preventDefault();
+    const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    const id = `${type}-${crypto.randomUUID().slice(0, 8)}`;
+    addNode(createNodeSpec(id, type), position);
+  }
+
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full" onDragOver={handleDragOver} onDrop={handleDrop}>
       <ParticleLayer />
       <ReactFlow
         nodes={nodes}
