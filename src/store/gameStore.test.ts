@@ -90,4 +90,24 @@ describe("gameStore", () => {
     store.removeNode("new-cache");
     expect(useGameStore.getState().graph.nodes.some((n) => n.id === "new-cache")).toBe(false);
   });
+
+  it("auto-lays-out new nodes, preserves manually dragged positions, and cleans up on removal", () => {
+    const store = useGameStore.getState();
+    const before = useGameStore.getState().positions;
+    expect(before.database).toBeDefined();
+
+    const cache = createNodeSpec("new-cache", "cache");
+    store.addNode(cache);
+    expect(useGameStore.getState().positions["new-cache"]).toBeDefined();
+
+    store.setNodePosition("new-cache", { x: 999, y: 42 });
+    expect(useGameStore.getState().positions["new-cache"]).toEqual({ x: 999, y: 42 });
+
+    // Adding an unrelated node must not disturb the dragged one.
+    store.addNode(createNodeSpec("another-cache", "cache"));
+    expect(useGameStore.getState().positions["new-cache"]).toEqual({ x: 999, y: 42 });
+
+    store.removeNode("new-cache");
+    expect(useGameStore.getState().positions["new-cache"]).toBeUndefined();
+  });
 });
