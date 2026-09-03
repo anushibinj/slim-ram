@@ -1,7 +1,9 @@
+import { GraphCanvas } from "./components/canvas/GraphCanvas";
+
 function App() {
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100">
-      <p>Slim RAM — scaffold</p>
+    <div className="h-screen w-screen bg-slate-100">
+      <GraphCanvas />
     </div>
   );
 }
