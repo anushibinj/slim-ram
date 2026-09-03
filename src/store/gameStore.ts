@@ -13,7 +13,7 @@ const INTRO_LOCK_MS = 4000; // the broken system runs live, untouchable, before 
 const WIN_HOLD_MS = 3000; // win condition must hold for 3 consecutive seconds
 const P99_HISTORY_WINDOW_MS = 30_000;
 
-export type GamePhase = "briefing" | "intro" | "editing" | "won";
+export type GamePhase = "briefing" | "intro" | "editing";
 
 export interface HudSnapshot {
   p99LatencyMs: number;
@@ -68,6 +68,10 @@ interface GameStoreState {
   phase: GamePhase;
   introStartMs: number | null;
   winHoldStartMs: number | null;
+  /** True from the moment the win condition has held continuously for WIN_HOLD_MS until it stops holding again. */
+  winAchievedForCurrentHold: boolean;
+  /** Drives the win modal. Winning doesn't lock the level — dismissing this (without leaving the level) just hides it. */
+  winModalVisible: boolean;
   completedLevelIds: string[];
 
   /** Node shown in the Inspector. */
@@ -83,6 +87,7 @@ interface GameStoreState {
   loadLevel: (levelId: string, nowMs?: number) => void;
   dismissBriefing: (nowMs: number) => void;
   stepSimulation: (nowMs: number) => void;
+  dismissWinModal: () => void;
 
   selectNode: (nodeId: string | null) => void;
   beginConnect: (nodeId: string) => void;
@@ -111,6 +116,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   phase: "briefing",
   introStartMs: null,
   winHoldStartMs: null,
+  winAchievedForCurrentHold: false,
+  winModalVisible: false,
   completedLevelIds: progress.completedLevelIds,
   selectedNodeId: null,
   connectSourceId: null,
@@ -129,6 +136,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       phase: "briefing",
       introStartMs: nowMs ?? null,
       winHoldStartMs: null,
+      winAchievedForCurrentHold: false,
+      winModalVisible: false,
       selectedNodeId: null,
       connectSourceId: null,
       hintsRevealed: 0,
@@ -140,9 +149,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     set({ phase: "intro", introStartMs: nowMs });
   },
 
+  dismissWinModal: () => set({ winModalVisible: false }),
+
   stepSimulation: (nowMs) => {
     const state = get();
-    if (state.phase === "briefing" || state.phase === "won") return;
+    if (state.phase === "briefing") return;
 
     const simState = tick(state.graph, state.level.trafficProfile, SIM_TICK_MS);
 
@@ -151,18 +162,29 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       phase = "editing";
     }
 
+    // Edge-triggered: justWon fires exactly once per continuous holding
+    // streak, the instant it crosses WIN_HOLD_MS — not on every tick while
+    // still held, and not again until the condition drops and comes back.
+    // Winning never locks the level: simulation keeps running and editing
+    // stays enabled in "editing" phase either way, so the player can keep
+    // tinkering after winning without anything special happening here.
     let winHoldStartMs = state.winHoldStartMs;
+    let winAchievedForCurrentHold = state.winAchievedForCurrentHold;
     let justWon = false;
     if (phase === "editing") {
       const holds = evaluateWinCondition(state.level, simState);
       if (holds) {
-        if (winHoldStartMs === null) winHoldStartMs = nowMs;
-        if (nowMs - winHoldStartMs >= WIN_HOLD_MS) {
-          phase = "won";
+        if (winHoldStartMs === null) {
+          winHoldStartMs = nowMs;
+          winAchievedForCurrentHold = false;
+        }
+        if (!winAchievedForCurrentHold && nowMs - winHoldStartMs >= WIN_HOLD_MS) {
+          winAchievedForCurrentHold = true;
           justWon = true;
         }
       } else {
         winHoldStartMs = null;
+        winAchievedForCurrentHold = false;
       }
     }
 
@@ -172,7 +194,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const shouldSampleHud = justWon || !lastSample || nowMs - lastSample.t >= HUD_THROTTLE_MS;
 
     if (!shouldSampleHud) {
-      set({ simState, phase, winHoldStartMs });
+      set({ simState, phase, winHoldStartMs, winAchievedForCurrentHold });
       return;
     }
 
@@ -191,11 +213,20 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         ? state.completedLevelIds
         : [...state.completedLevelIds, state.level.id];
       saveProgress({ completedLevelIds, currentLevelId: state.level.id });
-      set({ simState, phase, winHoldStartMs, hud, p99History, completedLevelIds });
+      set({
+        simState,
+        phase,
+        winHoldStartMs,
+        winAchievedForCurrentHold,
+        hud,
+        p99History,
+        completedLevelIds,
+        winModalVisible: true,
+      });
       return;
     }
 
-    set({ simState, phase, winHoldStartMs, hud, p99History });
+    set({ simState, phase, winHoldStartMs, winAchievedForCurrentHold, hud, p99History });
   },
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),

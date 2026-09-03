@@ -2,7 +2,7 @@ import { getNextLevelId } from "../../levels";
 import { useGameStore } from "../../store/gameStore";
 import { Modal } from "./Modal";
 
-export function WinModal() {
+export function WinModal({ onKeepPlaying }: { onKeepPlaying: () => void }) {
   const level = useGameStore((s) => s.level);
   const hud = useGameStore((s) => s.hud);
   const loadLevel = useGameStore((s) => s.loadLevel);
@@ -29,7 +29,13 @@ export function WinModal() {
         </div>
       </dl>
 
-      {nextLevelId ? (
+      {!nextLevelId && (
+        <p className="mt-4 text-center text-sm font-medium text-slate-700">
+          That's all five levels — you've completed Slim RAM.
+        </p>
+      )}
+
+      {nextLevelId && (
         <button
           type="button"
           onClick={() => loadLevel(nextLevelId)}
@@ -38,20 +44,32 @@ export function WinModal() {
         >
           Next level
         </button>
-      ) : (
-        <>
-          <p className="mt-5 text-center text-sm font-medium text-slate-700">
-            That's all five levels — you've completed Slim RAM.
-          </p>
-          <button
-            type="button"
-            onClick={() => loadLevel(level.id)}
-            className="mt-3 w-full rounded-lg border border-slate-300 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            style={{ minHeight: 44 }}
-          >
-            Replay
-          </button>
-        </>
+      )}
+
+      <button
+        type="button"
+        onClick={onKeepPlaying}
+        className={`w-full rounded-lg border border-slate-300 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${nextLevelId ? "mt-3" : "mt-5"}`}
+        style={{ minHeight: 44 }}
+      >
+        Play around in this level
+      </button>
+
+      {!nextLevelId && (
+        <button
+          type="button"
+          onClick={() => loadLevel(level.id)}
+          className="mt-3 w-full rounded-lg py-2 text-sm font-medium text-slate-500 hover:bg-slate-50"
+          style={{ minHeight: 44 }}
+        >
+          Restart from scratch
+        </button>
+      )}
+
+      {nextLevelId && (
+        <p className="mt-3 text-center text-xs text-slate-400">
+          A "✓ Next level" button stays in the header whenever you're ready.
+        </p>
       )}
     </Modal>
   );

@@ -7,16 +7,23 @@ import { WinModal } from "./components/modals/WinModal";
 import { Inspector } from "./components/panels/Inspector";
 import { MetricsPanel } from "./components/panels/MetricsPanel";
 import { Palette } from "./components/panels/Palette";
+import { getNextLevelId } from "./levels";
 import { SIM_TICK_MS, useGameStore } from "./store/gameStore";
 
 type MobileSheet = "palette" | "metrics" | null;
 
 function App() {
   const phase = useGameStore((s) => s.phase);
+  const level = useGameStore((s) => s.level);
+  const isSolved = useGameStore((s) => s.completedLevelIds.includes(s.level.id));
+  const winModalVisible = useGameStore((s) => s.winModalVisible);
+  const dismissWinModal = useGameStore((s) => s.dismissWinModal);
+  const loadLevel = useGameStore((s) => s.loadLevel);
   const selectedNodeId = useGameStore((s) => s.selectedNodeId);
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
+  const nextLevelId = getNextLevelId(level.id);
 
   useEffect(() => {
     const id = setInterval(() => useGameStore.getState().stepSimulation(performance.now()), SIM_TICK_MS);
@@ -35,6 +42,16 @@ function App() {
         <div className="min-w-0 flex-1">
           <Hud />
         </div>
+        {isSolved && nextLevelId && (
+          <button
+            type="button"
+            onClick={() => loadLevel(nextLevelId)}
+            className="mr-2 flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+            style={{ minHeight: 44 }}
+          >
+            ✓ Next level →
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setHintOpen(true)}
@@ -123,9 +140,9 @@ function App() {
       )}
 
       {phase === "briefing" && <BriefingModal />}
-      {phase === "won" && <WinModal />}
-      {helpOpen && phase !== "briefing" && phase !== "won" && <HelpModal onClose={() => setHelpOpen(false)} />}
-      {hintOpen && phase !== "briefing" && phase !== "won" && <HintModal onClose={() => setHintOpen(false)} />}
+      {winModalVisible && <WinModal onKeepPlaying={dismissWinModal} />}
+      {helpOpen && phase !== "briefing" && !winModalVisible && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {hintOpen && phase !== "briefing" && !winModalVisible && <HintModal onClose={() => setHintOpen(false)} />}
     </div>
   );
 }

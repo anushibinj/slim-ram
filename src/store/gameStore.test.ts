@@ -62,12 +62,46 @@ describe("gameStore", () => {
     for (let i = 0; i < 40; i++) {
       t += 100;
       useGameStore.getState().stepSimulation(t);
-      if (useGameStore.getState().phase === "won") break;
+      if (useGameStore.getState().winModalVisible) break;
     }
 
-    expect(useGameStore.getState().phase).toBe("won");
+    expect(useGameStore.getState().winModalVisible).toBe(true);
+    // Winning never locks the level — it should still be in editing phase.
+    expect(useGameStore.getState().phase).toBe("editing");
     expect(t - (T0 + 4100)).toBeGreaterThanOrEqual(3000);
     expect(useGameStore.getState().completedLevelIds).toContain("level-01");
+  });
+
+  it("does not lock editing or stop the sim loop after winning, and lets the player keep tinkering", () => {
+    const store = useGameStore.getState();
+    store.addNode(createNodeSpec("fix-cache", "cache"));
+    store.removeEdge("e-app-db");
+    store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
+    store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
+
+    useGameStore.getState().dismissBriefing(T0);
+    let t = T0 + 4100;
+    useGameStore.getState().stepSimulation(t);
+    for (let i = 0; i < 40; i++) {
+      t += 100;
+      useGameStore.getState().stepSimulation(t);
+      if (useGameStore.getState().winModalVisible) break;
+    }
+    expect(useGameStore.getState().winModalVisible).toBe(true);
+
+    // Dismissing the win modal ("play around in this level") just hides
+    // it — the level stays fully editable and completion is retained.
+    store.dismissWinModal();
+    expect(useGameStore.getState().winModalVisible).toBe(false);
+    expect(useGameStore.getState().phase).toBe("editing");
+    expect(useGameStore.getState().completedLevelIds).toContain("level-01");
+
+    // Breaking the fix and simulating further must not crash or relock anything.
+    store.removeNode("fix-cache");
+    t += 100;
+    useGameStore.getState().stepSimulation(t);
+    expect(useGameStore.getState().phase).toBe("editing");
+    expect(useGameStore.getState().completedLevelIds).toContain("level-01"); // still recorded as solved
   });
 
   it("refreshes hud on the exact winning tick even if the throttle window hasn't elapsed", () => {
@@ -94,7 +128,7 @@ describe("gameStore", () => {
     store.updateNodeConfig("fix-cache", { hitRatio: 0.99 });
     useGameStore.getState().stepSimulation(T0 + 7100);
 
-    expect(useGameStore.getState().phase).toBe("won");
+    expect(useGameStore.getState().winModalVisible).toBe(true);
     const hudAfter = useGameStore.getState().hud;
     expect(hudAfter.p99LatencyMs).toBeLessThan(hudBefore.p99LatencyMs);
   });
