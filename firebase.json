@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "slim-ram",
     "public": "dist",
     "ignore": [
       "firebase.json",
