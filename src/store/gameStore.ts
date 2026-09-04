@@ -9,11 +9,10 @@ import { loadProgress, saveProgress } from "./storage";
 
 export const SIM_TICK_MS = 100; // fixed 10Hz, per the engine's performance contract
 const HUD_THROTTLE_MS = 250; // ~4Hz — the only cadence React HUD components should see
-const INTRO_LOCK_MS = 4000; // the broken system runs live, untouchable, before editing unlocks
 const WIN_HOLD_MS = 3000; // win condition must hold for 3 consecutive seconds
 const P99_HISTORY_WINDOW_MS = 30_000;
 
-export type GamePhase = "briefing" | "intro" | "editing";
+export type GamePhase = "briefing" | "editing";
 
 export interface HudSnapshot {
   p99LatencyMs: number;
@@ -66,7 +65,6 @@ interface GameStoreState {
   positions: Record<string, Position>;
   p99History: P99Sample[];
   phase: GamePhase;
-  introStartMs: number | null;
   winHoldStartMs: number | null;
   /** True from the moment the win condition has held continuously for WIN_HOLD_MS until it stops holding again. */
   winAchievedForCurrentHold: boolean;
@@ -84,8 +82,8 @@ interface GameStoreState {
   /** How many of the current level's hints have been revealed, 0..hints.length. Resets on loadLevel. */
   hintsRevealed: number;
 
-  loadLevel: (levelId: string, nowMs?: number) => void;
-  dismissBriefing: (nowMs: number) => void;
+  loadLevel: (levelId: string) => void;
+  dismissBriefing: () => void;
   stepSimulation: (nowMs: number) => void;
   dismissWinModal: () => void;
 
@@ -114,7 +112,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   positions: layoutGraph(initialLevel.startingGraph),
   p99History: [],
   phase: "briefing",
-  introStartMs: null,
   winHoldStartMs: null,
   winAchievedForCurrentHold: false,
   winModalVisible: false,
@@ -123,7 +120,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   connectSourceId: null,
   hintsRevealed: 0,
 
-  loadLevel: (levelId, nowMs) => {
+  loadLevel: (levelId) => {
     const level = getLevelById(levelId);
     if (!level) return;
     set({
@@ -134,7 +131,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       positions: layoutGraph(level.startingGraph),
       p99History: [],
       phase: "briefing",
-      introStartMs: nowMs ?? null,
       winHoldStartMs: null,
       winAchievedForCurrentHold: false,
       winModalVisible: false,
@@ -144,9 +140,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     });
   },
 
-  dismissBriefing: (nowMs) => {
+  // Editing unlocks immediately — no locked "watch it fail" delay. The
+  // system still starts in its broken state, so the player sees it's
+  // broken right away, but nothing stops them from fixing it that instant.
+  dismissBriefing: () => {
     if (get().phase !== "briefing") return;
-    set({ phase: "intro", introStartMs: nowMs });
+    set({ phase: "editing" });
   },
 
   dismissWinModal: () => set({ winModalVisible: false }),
@@ -156,11 +155,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (state.phase === "briefing") return;
 
     const simState = tick(state.graph, state.level.trafficProfile, SIM_TICK_MS);
-
-    let phase: GamePhase = state.phase;
-    if (phase === "intro" && state.introStartMs !== null && nowMs - state.introStartMs >= INTRO_LOCK_MS) {
-      phase = "editing";
-    }
+    const phase = state.phase;
 
     // Edge-triggered: justWon fires exactly once per continuous holding
     // streak, the instant it crosses WIN_HOLD_MS — not on every tick while

@@ -11,7 +11,7 @@ describe("gameStore", () => {
     // between tests sharing this module-level store — reset it explicitly
     // so each test starts from a clean "nothing solved yet" baseline.
     useGameStore.setState({ completedLevelIds: [] });
-    useGameStore.getState().loadLevel("level-01", T0);
+    useGameStore.getState().loadLevel("level-01");
   });
 
   it("starts on the briefing phase with the level's starting graph", () => {
@@ -26,22 +26,19 @@ describe("gameStore", () => {
     expect(useGameStore.getState().phase).toBe("briefing");
   });
 
-  it("moves to intro on dismiss, and locks editing for a few seconds", () => {
-    useGameStore.getState().dismissBriefing(T0);
-    expect(useGameStore.getState().phase).toBe("intro");
+  it("moves straight to editing on dismiss, with no locked delay", () => {
+    useGameStore.getState().dismissBriefing();
+    expect(useGameStore.getState().phase).toBe("editing");
 
-    useGameStore.getState().stepSimulation(T0 + 500);
-    expect(useGameStore.getState().phase).toBe("intro");
-
-    useGameStore.getState().stepSimulation(T0 + 4100);
+    // Immediately steppable — no artificial "watch it fail" window.
+    useGameStore.getState().stepSimulation(T0 + 50);
     expect(useGameStore.getState().phase).toBe("editing");
   });
 
   it("throttles hud updates to roughly 4Hz instead of every 10Hz tick", () => {
-    useGameStore.getState().dismissBriefing(T0);
-    useGameStore.getState().stepSimulation(T0 + 4100); // now editing
+    useGameStore.getState().dismissBriefing();
 
-    let t = T0 + 4100;
+    let t = T0;
     for (let i = 0; i < 10; i++) {
       t += 100;
       useGameStore.getState().stepSimulation(t);
@@ -60,10 +57,9 @@ describe("gameStore", () => {
     store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
     store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
 
-    useGameStore.getState().dismissBriefing(T0);
-    useGameStore.getState().stepSimulation(T0 + 4100); // now editing, win condition already holds
+    useGameStore.getState().dismissBriefing(); // editing starts immediately, win condition already holds
 
-    let t = T0 + 4100;
+    let t = T0;
     for (let i = 0; i < 40; i++) {
       t += 100;
       useGameStore.getState().stepSimulation(t);
@@ -73,7 +69,7 @@ describe("gameStore", () => {
     expect(useGameStore.getState().winModalVisible).toBe(true);
     // Winning never locks the level — it should still be in editing phase.
     expect(useGameStore.getState().phase).toBe("editing");
-    expect(t - (T0 + 4100)).toBeGreaterThanOrEqual(3000);
+    expect(t - T0).toBeGreaterThanOrEqual(3000);
     expect(useGameStore.getState().completedLevelIds).toContain("level-01");
   });
 
@@ -84,9 +80,8 @@ describe("gameStore", () => {
     store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
     store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
 
-    useGameStore.getState().dismissBriefing(T0);
-    let t = T0 + 4100;
-    useGameStore.getState().stepSimulation(t);
+    useGameStore.getState().dismissBriefing();
+    let t = T0;
     for (let i = 0; i < 40; i++) {
       t += 100;
       useGameStore.getState().stepSimulation(t);
@@ -119,9 +114,8 @@ describe("gameStore", () => {
     }
 
     wireFix();
-    useGameStore.getState().dismissBriefing(T0);
-    let t = T0 + 4100;
-    useGameStore.getState().stepSimulation(t);
+    useGameStore.getState().dismissBriefing();
+    let t = T0;
     for (let i = 0; i < 40; i++) {
       t += 100;
       useGameStore.getState().stepSimulation(t);
@@ -156,12 +150,12 @@ describe("gameStore", () => {
     store.addEdge({ id: "e-app-cache", source: "app_server", target: "fix-cache" });
     store.addEdge({ id: "e-cache-db", source: "fix-cache", target: "database" });
 
-    useGameStore.getState().dismissBriefing(T0);
-    useGameStore.getState().stepSimulation(T0 + 4100);
+    useGameStore.getState().dismissBriefing();
+    useGameStore.getState().stepSimulation(T0); // first tick in editing — win condition already holds, starts the 3s hold
 
     // Drive right up to (but not past) the win threshold with a hud sample
     // freshly taken.
-    useGameStore.getState().stepSimulation(T0 + 7050);
+    useGameStore.getState().stepSimulation(T0 + 2950);
     expect(useGameStore.getState().phase).toBe("editing");
     const hudBefore = useGameStore.getState().hud;
 
@@ -171,7 +165,7 @@ describe("gameStore", () => {
     // later, inside the 250ms window) would report the stale pre-tweak
     // value instead.
     store.updateNodeConfig("fix-cache", { hitRatio: 0.99 });
-    useGameStore.getState().stepSimulation(T0 + 7100);
+    useGameStore.getState().stepSimulation(T0 + 3000);
 
     expect(useGameStore.getState().winModalVisible).toBe(true);
     const hudAfter = useGameStore.getState().hud;
@@ -179,9 +173,9 @@ describe("gameStore", () => {
   });
 
   it("resets winHoldStartMs if the condition stops holding", () => {
-    useGameStore.getState().dismissBriefing(T0);
-    useGameStore.getState().stepSimulation(T0 + 4100); // editing, but still broken — condition never holds
-    useGameStore.getState().stepSimulation(T0 + 4200);
+    useGameStore.getState().dismissBriefing();
+    useGameStore.getState().stepSimulation(T0); // editing, but still broken — condition never holds
+    useGameStore.getState().stepSimulation(T0 + 100);
     expect(useGameStore.getState().winHoldStartMs).toBeNull();
     expect(useGameStore.getState().phase).toBe("editing");
   });

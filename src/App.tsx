@@ -72,12 +72,6 @@ function App() {
         </button>
       </header>
 
-      {phase === "intro" && (
-        <div className="bg-amber-100 px-3 py-1.5 text-center text-xs font-medium text-amber-800">
-          Watch it fail — editing unlocks in a moment…
-        </div>
-      )}
-
       <div className="relative flex flex-1 overflow-hidden">
         <aside className="hidden w-56 flex-col border-r border-slate-200 bg-white md:flex">
           <Palette />

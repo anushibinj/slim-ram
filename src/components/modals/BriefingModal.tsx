@@ -39,16 +39,16 @@ export function BriefingModal() {
       <BriefingContent level={level} />
 
       <p className="mt-4 text-xs text-slate-400">
-        The system will run live for a few seconds first — watch it fail before you're allowed to touch anything.
+        The system starts out live and broken — jump in and start fixing it as soon as you're ready.
       </p>
 
       <button
         type="button"
-        onClick={() => dismissBriefing(performance.now())}
+        onClick={() => dismissBriefing()}
         className="mt-5 w-full rounded-lg bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
         style={{ minHeight: 44 }}
       >
-        Watch it break
+        Start fixing it
       </button>
     </Modal>
   );
