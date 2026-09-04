@@ -35,3 +35,10 @@ src/
 
 Capacitor is configured (`capacitor.config.ts`) for a future native build,
 but no platform has been added yet.
+
+## Spec
+
+[SPEC.md](./SPEC.md) is the living product spec. When a requested change
+contradicts it, the contradicted section is updated in place and logged
+under **Amendments** at the bottom, so it never silently drifts out of sync
+with the code.
